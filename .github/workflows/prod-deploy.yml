@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Production Deployment
 
 on:
   push:
@@ -6,24 +6,25 @@ on:
       - master
 
 jobs:
-  deploy:
+  build:
+    name: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v2
+    - name: Deploy to staging
+      uses: appleboy/ssh-action@master
+      env:
+        SSH_BUILD_DIRECTORY: ${{ secrets.EC2_DEPLOY_PATH }}
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        envs: SSH_BUILD_DIRECTORY
+        script: |
+          cd $SSH_BUILD_DIRECTORY
 
-      - name: Deploy to EC2
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            # Pull the latest changes
-            cd ${{ secrets.EC2_DEPLOY_PATH }}
-            git pull origin master
-            
-            # Optional: Install dependencies, build the app
-            npm install
-            npm run build
+          echo "Pulling latest code"
+          git checkout -f
+          git pull origin master
 
-            # Restart services
-            sudo systemctl restart my-app
-          EOF
