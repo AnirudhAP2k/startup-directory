@@ -39,7 +39,7 @@ jobs:
           git checkout -f
           git pull origin master
     
-          # Ensure the environment is clean
+          # Ensures the environment is clean
           rm -rf node_modules
           rm -rf .next
     
