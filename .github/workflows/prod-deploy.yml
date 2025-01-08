@@ -44,13 +44,13 @@ jobs:
           rm -rf .next
     
           # Copy files from the GitHub runner to the server
-          rsync -avz --exclude=".git" ./ /var/www/startups-directory/
+          rsync -avz --exclude=".git" ./ /var/www/startup-directory/
     
           # Install dependencies and build on the server
-          cd /var/www/startups-directory
+          cd /var/www/startup-directory
           npm install --production
           npm run build
     
           # Restart the app (if using PM2 or a similar process manager)
-          pm2 restart startups-directory || pm2 start npm --name startups-directory -- start
+          pm2 restart startup-directory || pm2 start npm --name startup-directory -- start
     
