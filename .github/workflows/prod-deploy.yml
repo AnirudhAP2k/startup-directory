@@ -1,17 +1,55 @@
-- name: Deploy to EC2
-  uses: appleboy/ssh-action@master
-  with:
-    host: ${{ secrets.EC2_HOST }}
-    username: ${{ secrets.EC2_USER }}
-    key: ${{ secrets.EC2_SSH_KEY }}
-    script: |
-      cd ${{ secrets.EC2_DEPLOY_PATH }}
-      git checkout -f
-      git pull origin master
-      rm -rf node_modules
-      rm -rf .next
-      rsync -avz --exclude=".git" ./ /var/www/startups-directory/
-      cd /var/www/startups-directory
-      npm install --production
-      npm run build
-      pm2 restart startups-directory || pm2 start npm --name startups-directory -- start
+name: Production Deployment
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18 # Ensure compatibility with your dependencies
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Application
+      run: npm run build
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          # Change to your app's directory
+          cd ${{ secrets.EC2_DEPLOY_PATH }}
+
+          # Pull the latest code
+          git checkout -f
+          git pull origin master
+
+          # Ensure the environment is clean
+          rm -rf node_modules
+          rm -rf .next
+
+          # Copy files from the GitHub runner to the server
+          rsync -avz --exclude=".git" ./ /var/www/startups-directory/
+
+          # Install dependencies and build on the server
+          cd /var/www/startups-directory
+          npm install --production
+          npm run build
+
+          # Restart the app (if using PM2 or a similar process manager)
+          pm2 restart startups-directory || pm2 start npm --name startups-directory -- start
