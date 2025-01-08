@@ -25,31 +25,32 @@ jobs:
     - name: Build Application
       run: npm run build
 
-    - name: Deploy to EC2
+      - name: Deploy to EC2
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
+        password: ${{ secrets.EC2_PASSWORD }}
         script: |
           # Change to your app's directory
           cd ${{ secrets.EC2_DEPLOY_PATH }}
-
+    
           # Pull the latest code
           git checkout -f
           git pull origin master
-
+    
           # Ensure the environment is clean
           rm -rf node_modules
           rm -rf .next
-
+    
           # Copy files from the GitHub runner to the server
           rsync -avz --exclude=".git" ./ /var/www/startups-directory/
-
+    
           # Install dependencies and build on the server
           cd /var/www/startups-directory
           npm install --production
           npm run build
-
+    
           # Restart the app (if using PM2 or a similar process manager)
           pm2 restart startups-directory || pm2 start npm --name startups-directory -- start
+    
