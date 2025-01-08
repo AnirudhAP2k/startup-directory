@@ -1,30 +1,17 @@
-name: Production Deployment
-
-on:
-  push:
-    branches:
-      - master
-
-jobs:
-  build:
-    name: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deploy to staging
-      uses: appleboy/ssh-action@master
-      env:
-        SSH_BUILD_DIRECTORY: ${{ secrets.EC2_DEPLOY_PATH }}
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        envs: SSH_BUILD_DIRECTORY
-        script: |
-          cd $SSH_BUILD_DIRECTORY
-
-          echo "Pulling latest code"
-          git checkout -f
-          git pull origin master
-
+- name: Deploy to EC2
+  uses: appleboy/ssh-action@master
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_SSH_KEY }}
+    script: |
+      cd ${{ secrets.EC2_DEPLOY_PATH }}
+      git checkout -f
+      git pull origin master
+      rm -rf node_modules
+      rm -rf .next
+      rsync -avz --exclude=".git" ./ /var/www/startups-directory/
+      cd /var/www/startups-directory
+      npm install --production
+      npm run build
+      pm2 restart startups-directory || pm2 start npm --name startups-directory -- start
