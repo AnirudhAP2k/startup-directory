@@ -17,7 +17,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18 # Ensure compatibility with your dependencies
+        node-version: 18
 
     - name: Install Dependencies
       run: npm install
@@ -32,25 +32,21 @@ jobs:
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         script: |
-          # Change to your app's directorys
+          # Navigate to the deployment directory
           cd ${{ secrets.EC2_DEPLOY_PATH }}
+          
+          # Ensure the working directory is clean
+          git reset --hard
+          git clean -fd
     
-          # Pull the latest code
-          git checkout -f
+          # Pull the latest code from the repository
+          git checkout -f master
           git pull origin master
     
-          # Ensures the environment is clean
-          rm -rf node_modules
-          rm -rf .next
-    
-          # Copy files from the GitHub runner to the server
-          rsync -avz --exclude=".git" ./ /var/www/startup-directory/
-    
-          # Install dependencies and build on the server
-          cd /var/www/startup-directory
+          # Install dependencies
           npm install --production
-          npm run build
     
-          # Restart the app (if using PM2 or a similar process manager)
+          # Restart the app using PM2
           pm2 restart startup-directory || pm2 start npm --name startup-directory -- start
+    
     
