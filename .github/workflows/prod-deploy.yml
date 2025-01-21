@@ -31,10 +31,7 @@ jobs:
           # Pull the latest code from the repository
           git checkout -f master
           git pull origin master
-    
-          # Install dependencies
-          npm ci --production
-    
-          # Restart the app using PM2's
-          pm2 restart startup-directory || pm2 start npm --name startup-directory -- start
-    
+
+          # Build and run Docker containers
+          docker-compose down
+          docker-compose up --build -d
