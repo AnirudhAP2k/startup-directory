@@ -14,24 +14,62 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v2
 
-    - name: Deploy to EC2
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22'
+
+    - name: Install Dependencies
+      run: |
+        npm install
+
+    - name: Build Next.js Application
+      run: |
+        npm run build
+
+    - name: Archive Build Files
+      run: |
+        tar -czf build.tar.gz .next public
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: nextjs-build-artifact
+        path: build.tar.gz
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+
+    steps:
+    - name: Download Build Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: nextjs-build-artifact
+
+    - name: Transfer Build Files to EC2
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         script: |
-          # Navigate to the deployment directory
+          # Navigate to the deployment directory on the EC2 instance
           cd ${{ secrets.EC2_DEPLOY_PATH }}
-          
-          # Ensure the working directory is clean
-          git reset --hard
-          git clean -fd
-    
-          # Pull the latest code from the repository
-          git checkout -f master
-          git pull origin master
 
-          # Build and run Docker containers
-          docker-compose down
-          docker-compose up --build -d
+          # Extract the build artifact
+          tar -xzf nextjs-build-artifact.tar.gz
+
+          # Clean up old files if necessary (optional)
+          rm -rf .next public
+
+          # Move the new build files to the correct directory
+          mv .next public /app/
+
+          # Install Node.js dependencies
+          cd /app
+          npm install --production
+
+          # Start the application in production mode
+          pm2 start npm --name "nextjs-app" -- run start
