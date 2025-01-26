@@ -25,7 +25,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v2
 
-
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
@@ -70,17 +69,14 @@ jobs:
           # Navigate to the deployment directory on the EC2 instance
           cd ${{ secrets.EC2_DEPLOY_PATH }}
 
-          # Extract the build artifact
-          tar -xzf build.tar.gz
-
           # Clean up old files if necessary (optional)
           rm -rf .next public
 
-          # Move the new build files to the correct directory
-          mv .next public .
+          # Extract the build artifact
+          tar -xzf nextjs-build-artifact.tar.gz -C ${{ secrets.EC2_DEPLOY_PATH }}
 
           # Install Node.js dependencies
           npm install --production
 
           # Start the application in production mode
-          pm2 start npm --name "nextjs-app" -- run start
+          NODE_ENV=production pm2 start npm --name "nextjs-app" -- run start
