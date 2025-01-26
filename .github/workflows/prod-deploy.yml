@@ -30,6 +30,14 @@ jobs:
       with:
         node-version: '22'
 
+    - name: Cache Node Modules
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
     - name: Install Dependencies
       run: |
         npm install
@@ -59,7 +67,16 @@ jobs:
       with:
         name: nextjs-build-artifact
 
-    - name: Transfer Build Files to EC2
+    - name: Transfer Build Artifact to EC2
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_PRIVATE_KEY }}
+        source: nextjs-build-artifact.tar.gz
+        target: ${{ secrets.EC2_DEPLOY_PATH }}/nextjs-build-artifact.tar.gz
+
+    - name: Execute Deployment on EC2
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -73,7 +90,7 @@ jobs:
           rm -rf .next public
 
           # Extract the build artifact
-          tar -xzf nextjs-build-artifact.tar.gz -C ${{ secrets.EC2_DEPLOY_PATH }}
+          tar -xzf nextjs-build-artifact.tar.gz
 
           # Install Node.js dependencies
           npm install --production
