@@ -87,7 +87,7 @@ jobs:
           rm -rf .next public
 
           # Extract the build artifact
-          tar -xzf nextjs-build-artifact.tar.gz
+          tar -xzf build.tar.gz
 
           # Install Node.js dependencies
           npm install --production
