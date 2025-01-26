@@ -59,6 +59,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: nextjs-build-artifact
+        path: nextjs-build-artifact.tar.gz
 
     - name: Transfer Build Files to EC2
       uses: appleboy/ssh-action@master
@@ -77,10 +78,9 @@ jobs:
           rm -rf .next public
 
           # Move the new build files to the correct directory
-          mv .next public /app/
+          mv .next public .
 
           # Install Node.js dependencies
-          cd /app
           npm install --production
 
           # Start the application in production mode
