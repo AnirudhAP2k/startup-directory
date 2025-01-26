@@ -59,7 +59,6 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: nextjs-build-artifact
-        path: nextjs-build-artifact.tar.gz
 
     - name: Transfer Build Files to EC2
       uses: appleboy/ssh-action@master
@@ -72,7 +71,7 @@ jobs:
           cd ${{ secrets.EC2_DEPLOY_PATH }}
 
           # Extract the build artifact
-          tar -xzf nextjs-build-artifact.tar.gz
+          tar -xzf build.tar.gz
 
           # Clean up old files if necessary (optional)
           rm -rf .next public
