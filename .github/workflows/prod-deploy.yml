@@ -89,8 +89,5 @@ jobs:
           # Extract the build artifact
           tar -xzf build.tar.gz
 
-          # Install Node.js dependencies
-          npm install --production
-
           # Start the application in production mode
           NODE_ENV=production pm2 start npm --name "nextjs-app" -- run start
