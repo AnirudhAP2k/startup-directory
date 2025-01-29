@@ -33,15 +33,12 @@ jobs:
     - name: Install Dependencies
       run: |
         npm install
-
     - name: Build Next.js Application
       run: |
         npm run build
-
     - name: Archive Build Files
       run: |
-        tar -czf build.tar.gz .next public
-
+        tar -czf build.tar.gz .next public node_modules
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -63,7 +60,6 @@ jobs:
       run: |
         echo "Source Path: $(pwd)/build.tar.gz"
         echo "Target Path: ${{ secrets.EC2_DEPLOY_PATH }}/nextjs-build-artifact.tar.gz"
-
     - name: Transfer Build Artifact to EC2
       uses: appleboy/scp-action@master
       with:
@@ -82,12 +78,9 @@ jobs:
         script: |
           # Navigate to the deployment directory on the EC2 instance
           cd ${{ secrets.EC2_DEPLOY_PATH }}
-
           # Clean up old files if necessary (optional)
-          rm -rf .next public
-
+          rm -rf .next public node_modules
           # Extract the build artifact
           tar -xzf build.tar.gz
-
           # Start the application in production mode
           NODE_ENV=production pm2 start npm --name "nextjs-app" -- run start
