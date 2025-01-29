@@ -6,40 +6,81 @@ on:
       - master
 
 jobs:
-  deploy:
+  build:
+    env:
+      NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+      NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+      NEXT_PUBLIC_SANITY_API_VERSION: ${{ secrets.NEXT_PUBLIC_SANITY_API_VERSION }}
+      AUTH_GITHUB_ID: ${{ secrets.AUTH_GITHUB_ID }}
+      AUTH_GITHUB_SECRET: ${{ secrets.AUTH_GITHUB_SECRET }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      NODE_ENV: ${{ secrets.NODE_ENV }}
+
     name: Build
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v2
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20'
+        node-version: '22'
 
-    - name: Deployment on EC2
+    - name: Install Dependencies
+      run: |
+        npm install
+    - name: Build Next.js Application
+      run: |
+        npm run build
+    - name: Archive Build Files
+      run: |
+        tar -czf build.tar.gz .next public node_modules
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nextjs-build-artifact
+        path: build.tar.gz
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Download Build Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: nextjs-build-artifact
+
+    - name: Debug SCP Paths
+      run: |
+        echo "Source Path: $(pwd)/build.tar.gz"
+        echo "Target Path: ${{ secrets.EC2_DEPLOY_PATH }}/nextjs-build-artifact.tar.gz"
+    - name: Transfer Build Artifact to EC2
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_PRIVATE_KEY }}
+        source: build.tar.gz
+        target: ${{ secrets.EC2_DEPLOY_PATH }}
+
+    - name: Execute Deployment on EC2
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         script: |
-          # Navigate to the deployment directory
+          # Navigate to the deployment directory on the EC2 instance
           cd ${{ secrets.EC2_DEPLOY_PATH }}
-
-          # Ensure repository is up to date
-          git fetch --all
-          git reset --hard origin/master
-          git pull origin master
-
-          # Install dependencies
-          npm ci --production
-
-          # Restart application with PM2
-          export NODE_ENV=production
-          pm2 restart nextjs-app || pm2 start npm --name "nextjs-app" -- run start
-
-          # Save PM2 process list (optional)
-          pm2 save
+          # Clean up old files if necessary (optional)
+          rm -rf .next public node_modules
+          # Extract the build artifact
+          tar -xzf build.tar.gz
+          # Start the application in production mode
+          NODE_ENV=production pm2 start npm --name "nextjs-app" -- run start
